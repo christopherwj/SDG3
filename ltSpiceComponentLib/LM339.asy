@@ -1,0 +1,23 @@
+Version 4
+SymbolType BLOCK
+RECTANGLE Normal -32 -56 80 80
+WINDOW 0 0 -56 Bottom 2
+WINDOW 3 17 80 Top 2
+SYMATTR Prefix X
+SYMATTR Value LM339
+SYMATTR ModelFile C:\Users\Chris\Downloads\LM339.5_1
+PIN -32 -16 LEFT 8
+PINATTR PinName V+
+PINATTR SpiceOrder 1
+PIN -32 16 LEFT 8
+PINATTR PinName V-
+PINATTR SpiceOrder 2
+PIN 80 -32 RIGHT 8
+PINATTR PinName Vin+
+PINATTR SpiceOrder 3
+PIN 80 0 RIGHT 8
+PINATTR PinName Vin-
+PINATTR SpiceOrder 4
+PIN 80 32 RIGHT 8
+PINATTR PinName output
+PINATTR SpiceOrder 5
