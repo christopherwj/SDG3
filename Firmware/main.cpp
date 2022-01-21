@@ -2,15 +2,22 @@
 PWM Tester for Gate Driver
 
 PWM high is on pin 45, PWM low is on pin 7.
+Analog in (audio) is on pin A0
 Be aware the Due runs at 3.3V.
 
+
+Serial interface instructions
 To change the amplitude, send it "a ##" whatever value between 0 and 952, less the deadtime. 
+    The setting below ADC, controls whether it listens to the ADC or serial interface
 Deadtime is changed using "d ##" with some value between 0 and 100. I think it "should be" 
-around 14 based on what timing we need I remember from the datasheet. You can set both at the 
-same time using "d ## a ##" or "a ## d ##". 
+    around 14 based on what timing we need I remember from the datasheet. You can set both 
+    at the same time using "d ## a ##" or "a ## d ##". 
 */
 
 #include <Arduino.h>
+
+// Comment out to use serial interface to control amplitude.
+#define ENABLEADC
 
 #define DEFAULTDEADTIME 14 // I think this should be the 14 for our gate driver. Adjust to determine
 #define DEFAULTPERIOD 952   // 84E6/952/2 = 44,117.64khz
@@ -20,6 +27,7 @@ same time using "d ## a ##" or "a ## d ##".
 #define MAXDEADTIME 100 // Arbitrary, should be lower like probably in the 
 #define MAXSAMPLEFREQ 44100
 #define MAXWAVEFREQ 20000
+#define MAXADC 4095
 #define DEFAULTWAVE flat
 
 enum waveTypes {flat, square, triangle, sine} waveType;
@@ -27,10 +35,10 @@ char waveTypeNames[][10] = {"flat\0", "square\0", "triangle\0", "sine\0"};
 
 char string[100];
 uint16_t amplitude, deadtime, sampleFreq, waveFreq;
-uint32_t adcResult = 0;
+uint32_t AdcResult = 0;
 uint32_t channel;
 
-void parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t *sampleFreq, enum waveTypes *waveType, uint16_t *waveFreq){
+bool parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t *sampleFreq, enum waveTypes *waveType, uint16_t *waveFreq){
     uint8_t currentChar = 0;
     uint8_t action;
     long long int tempValue;
@@ -56,10 +64,10 @@ void parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t
                 *waveType = tempValue < sizeof(enum waveTypes) ? (enum waveTypes)tempValue : DEFAULTWAVE;
                 break;
             default:
-                break;
+                return false;
         }
     }
-    return;
+    return true;
 }
 
 void setupADC(){
@@ -73,22 +81,14 @@ void setupADC(){
     return;
 }
 
-// I think the timer can be replaced by the PWM creating an interrupt.
-/*
-void tc_setup() {
-  PMC->PMC_PCER0 |= PMC_PCER0_PID29;                      // TC2 power ON : Timer Counter 0 channel 2 IS TC2
-  TC0->TC_CHANNEL[2].TC_CMR = TC_CMR_TCCLKS_TIMER_CLOCK2  // MCK/8, clk on rising edge
-                              | TC_CMR_WAVE               // Waveform mode
-                              | TC_CMR_WAVSEL_UP_RC        // UP mode with automatic trigger on RC Compare
-                              | TC_CMR_ACPA_CLEAR          // Clear TIOA2 on RA compare match
-                              | TC_CMR_ACPC_SET;           // Set TIOA2 on RC compare match
-
-  TC0->TC_CHANNEL[2].TC_RC = 238;  //<*********************  Frequency = (Mck/8)/TC_RC  Hz = 44.117 Hz
-  TC0->TC_CHANNEL[2].TC_RA = 40;  //<********************   Any Duty cycle in between 1 and 874
-
-  TC0->TC_CHANNEL[2].TC_CCR = TC_CCR_SWTRG | TC_CCR_CLKEN; // Software trigger TC2 counter and enable
+void PWM_Handler() {
+    #ifdef ENABLEADC
+    AdcResult = ADC->ADC_CDR[7];            // Read the previous result
+    ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
+    PWMC_SetDutyCycle(PWM, channel, (uint16_t)map(AdcResult, 0, MAXADC, 0, MAXAMP));
+    #endif
+    return;
 }
-*/
 
 void setupPWM(){
     uint32_t ulPin = 7;
@@ -124,6 +124,10 @@ void setupPWM(){
     PWMC_SetPeriod(PWM, channel, DEFAULTPERIOD);
     PWMC_SetDutyCycle(PWM_INTERFACE, channel, DEFAULTDUTY);
     PWMC_EnableChannel(PWM_INTERFACE, channel);
+    
+    PWMC_EnableChannelIt(PWM, channel);
+    NVIC_EnableIRQ(PWM_IRQn);
+
     g_pinStatus[ulPin] = (g_pinStatus[ulPin] & 0xF0) | PIN_STATUS_PWM;
     return;
 }
@@ -161,11 +165,13 @@ void setup() {
 void loop() {
     if(Serial.available() > 0){
         Serial.readBytesUntil(0, string, 100);
-        parseSerial(string, &amplitude, &deadtime, &sampleFreq, &waveType, &waveFreq);
-        sprintf(string, "Amplitude: %u\nDeadtime: %u", amplitude, deadtime);
-        Serial.println(string);
-        
-        setDuty(amplitude);
-        setDT(deadtime);
+        if(!parseSerial(string, &amplitude, &deadtime, &sampleFreq, &waveType, &waveFreq)){
+            sprintf(string, "Amplitude: %u Deadtime: %u", amplitude, deadtime);
+            Serial.println(string);
+            #ifdef ENABLEADC
+            setDuty(amplitude);
+            #endif
+            setDT(deadtime);
+        }
     }
 }
