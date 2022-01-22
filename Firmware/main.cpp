@@ -16,9 +16,6 @@ Deadtime is changed using "d ##" with some value between 0 and 100. I think it "
 
 #include <Arduino.h>
 
-// Comment out to use serial interface to control amplitude.
-#define ENABLEADC
-
 #define DEFAULTDEADTIME 14 // I think this should be the 14 for our gate driver. Adjust to determine
 #define DEFAULTPERIOD 952   // 84E6/952/2 = 44,117.64khz
 #define DEFAULTDUTY DEFAULTPERIOD/3     
@@ -37,6 +34,7 @@ char string[100];
 uint16_t amplitude, deadtime, sampleFreq, waveFreq;
 uint32_t AdcResult = 0;
 uint32_t channel;
+bool adcEnable = false;
 
 bool parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t *sampleFreq, enum waveTypes *waveType, uint16_t *waveFreq){
     uint8_t currentChar = 0;
@@ -82,11 +80,9 @@ void setupADC(){
 }
 
 void PWM_Handler() {
-    #ifdef ENABLEADC
     AdcResult = ADC->ADC_CDR[7];            // Read the previous result
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
     PWMC_SetDutyCycle(PWM, channel, (uint16_t)map(AdcResult, 0, MAXADC, 0, MAXAMP));
-    #endif
     return;
 }
 
@@ -168,9 +164,9 @@ void loop() {
         if(!parseSerial(string, &amplitude, &deadtime, &sampleFreq, &waveType, &waveFreq)){
             sprintf(string, "Amplitude: %u Deadtime: %u", amplitude, deadtime);
             Serial.println(string);
-            #ifdef ENABLEADC
+            PWMC_DisableChannelIt(PWM, channel);
+            NVIC_DisableIRQ(PWM_IRQn);
             setDuty(amplitude);
-            #endif
             setDT(deadtime);
         }
     }
