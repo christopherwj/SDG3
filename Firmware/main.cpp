@@ -80,6 +80,7 @@ void setupADC(){
 }
 
 void PWM_Handler() {
+    PWM->PWM_ISR1;
     AdcResult = ADC->ADC_CDR[7];            // Read the previous result
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
     PWMC_SetDutyCycle(PWM, channel, (uint16_t)map(AdcResult, 0, MAXADC, 0, MAXAMP));
@@ -94,7 +95,7 @@ void setupPWM(){
     // Starts the PWM clocks. Required to enable PWM.
     pmc_enable_periph_clk(PWM_INTERFACE_ID);
     // We'll be using the main clock without any dividers. This allows us the highest resolution.
-    
+ 
     // Some Arduino library code to help with determining the channel
     channel = g_APinDescription[ulPin].ulPWMChannel;
     
@@ -103,24 +104,24 @@ void setupPWM(){
             g_APinDescription[ulPin].ulPinType,
             g_APinDescription[ulPin].ulPin | PIO_PC18,      // In addition to the pin enabled from this function,
             g_APinDescription[ulPin].ulPinConfiguration);   // also enable the complementary pin.
-    
+  
     // Configure the channel
     PWM->PWM_CH_NUM[0].PWM_CMR = 1;
-    /* Disable ul_channel (effective at the end of the current period) */
+    // Disable ul_channel (effective at the end of the current period)
     if ((PWM->PWM_SR & (1 << channel)) != 0) {
         PWM->PWM_DIS = 1 << channel;
         while ((PWM->PWM_SR & (1 << channel)) != 0);
     }
-    /* Configure ul_channel */   
+    // Configure ul_channel   
     PWM->PWM_CH_NUM[channel].PWM_CMR = PWM_CMR_DTE | PWM_CMR_CALG; // Enable Deadtime and center align
-    
+
     // Deadtime value set
     PWM->PWM_CH_NUM[channel].PWM_DT = DEFAULTDEADTIME << PWM_DT_DTL_Pos | DEFAULTDEADTIME;
     // Period value set
     PWMC_SetPeriod(PWM, channel, DEFAULTPERIOD);
     PWMC_SetDutyCycle(PWM_INTERFACE, channel, DEFAULTDUTY);
     PWMC_EnableChannel(PWM_INTERFACE, channel);
-    
+
     PWMC_EnableChannelIt(PWM, channel);
     NVIC_EnableIRQ(PWM_IRQn);
 
@@ -147,7 +148,6 @@ void setDuty(uint16_t duty){
 void setup() {
   Serial.begin(115200);
   setupADC();
-  //tc_setup();
   setupPWM();
   amplitude = DEFAULTDUTY;
   deadtime = DEFAULTDEADTIME;
