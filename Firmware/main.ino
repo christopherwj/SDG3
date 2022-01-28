@@ -7,11 +7,14 @@ Be aware the Due runs at 3.3V.
 
 
 Serial interface instructions
-To change the amplitude, send it "a ##" whatever value between 0 and 952, less the deadtime. 
+To change the amplitude, send it "a ##" whatever value between 0 and 952. 
     The setting below ADC, controls whether it listens to the ADC or serial interface
 Deadtime is changed using "d ##" with some value between 0 and 100. I think it "should be" 
     around 14 based on what timing we need I remember from the datasheet. You can set both 
     at the same time using "d ## a ##" or "a ## d ##". 
+
+Amplitude has a range between 0 and 952. This is mapped to a range between
+-1 and 1 with 476 mapping to 0.
 */
 
 #include <Arduino.h>
@@ -36,6 +39,20 @@ uint32_t AdcResult = 0;
 uint32_t channel;
 bool adcEnable = false;
 
+// Parses a string with commands to control the PWM outputs for testing.
+//
+// Inputs:
+//      string: The input string
+//      amplitude: Pointer to the variable for the amplitude.
+//      ... etc
+// Returns: If the input string was valid
+//
+// Uses: parseSerial("a 100", &amp, &dt, null, null, null);
+//       Parse the input string and set amplitude to 100.
+// Uses: parseSerial("d 57", &amp, &dt, null, null, null);
+//       Parse the input string and set the dead time to 57 cycles.
+// Uses: parseSerial("d 20 a 120", &amp, &dt, null, null, null);
+//       Parse the input string and set deadtime to 20, amplitude to 120
 bool parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t *sampleFreq, enum waveTypes *waveType, uint16_t *waveFreq){
     uint8_t currentChar = 0;
     uint8_t action;
@@ -68,6 +85,7 @@ bool parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t
     return true;
 }
 
+// Sets up the ADC on the A0 pin.
 void setupADC(){
     ADC->ADC_WPMR &= ~(ADC_WPMR_WPEN); // Disable Write Protect Mode
     ADC->ADC_CHER |= ADC_CHER_CH7; // Enable A0 pin
@@ -79,14 +97,18 @@ void setupADC(){
     return;
 }
 
+// PWM Interrupt Handler
+// Every time the PWM completes a cycle it triggers an interrupt.
+// This reads the value in the ADC, starts a new ADC reading, and sets the PWM duty to the maped value from the ADC.
 void PWM_Handler() {
-    PWM->PWM_ISR1;
+    PWM->PWM_ISR1;                          // Clear flag by reading register
     AdcResult = ADC->ADC_CDR[7];            // Read the previous result
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
     PWMC_SetDutyCycle(PWM, channel, (uint16_t)map(AdcResult, 0, MAXADC, 0, MAXAMP));
     return;
 }
 
+// Sets up PWM at 44117 Hz, Differential Inputs, and Deadtime
 void setupPWM(){
     uint32_t ulPin = 7;
 
@@ -129,17 +151,32 @@ void setupPWM(){
     return;
 }
 
+// Sets the deadtime in the update register
+//
+// Inputs: dtTime, The number of cycles there exists deadtime.
+//
+// Currently set up so that the deadtime between the HI to LO and LO to HI waveforms are the same.
+// This can be changed if needed.
 void setDT(uint16_t dtTime){
     PWM->PWM_CH_NUM[channel].PWM_DTUPD = dtTime << 16 | dtTime;
     return;
 }
 
-// Shouldn't need this one
+
+// Sets the period at which the PWM completes a cycle. 
+//
+// Inputs: period, The number of cycles in a period.
+//
+// This shouldn't be needed as it's set at 44117 Hz already.
 void setPeriod(uint16_t period){
     PWMC_SetPeriod(PWM, channel, period);
     return;
 }
 
+// Sets the duty cycle of the PWM
+// 
+// Inputs: duty, The number of cycles the HI side of the input is enabled.
+//               Note: The LO side is complementary
 void setDuty(uint16_t duty){
     PWMC_SetDutyCycle(PWM, channel, duty);
     return;
