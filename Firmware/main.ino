@@ -19,16 +19,16 @@ Amplitude has a range between 0 and 952. This is mapped to a range between
 
 #include <Arduino.h>
 
-#define DEFAULTDEADTIME 14 // I think this should be the 14 for our gate driver. Adjust to determine
-#define DEFAULTPERIOD 952   // 84E6/952/2 = 44,117.64khz
-#define DEFAULTDUTY DEFAULTPERIOD/3     
+#define DEFAULT_DEADTIME 14 // I think this should be the 14 for our gate driver. Adjust to determine
+#define DEFAULT_PERIOD 952   // 84E6/952/2 = 44,117.64khz
+#define DEFAULT_DUTY DEFAULT_PERIOD/3     
 
-#define MAXAMP 952
-#define MAXDEADTIME 100 // Arbitrary, should be lower like probably in the 
-#define MAXSAMPLEFREQ 44100
-#define MAXWAVEFREQ 20000
-#define MAXADC 4095
-#define DEFAULTWAVE flat
+#define MAX_AMP 952
+#define MAX_DEADTIME 100 // Arbitrary, should be lower like probably in the 
+#define MAX_SAMPLE_FREQ 44100
+#define MAX_WAVE_FREQ 20000
+#define MAX_ADC 4095
+#define DEFAULT_WAVE flat
 
 enum waveTypes {flat, square, triangle, sine} waveType;
 char waveTypeNames[][10] = {"flat\0", "square\0", "triangle\0", "sine\0"};
@@ -64,19 +64,19 @@ bool parseSerial(char *string, uint16_t *amplitude, uint16_t *deadtime, uint16_t
         switch(action){
             case 'A':
             case 'a':
-                *amplitude = tempValue <= MAXAMP ? tempValue : MAXAMP; break;
+                *amplitude = tempValue <= MAX_AMP ? tempValue : MAX_AMP; break;
             case 'D':
             case 'd':
-                *deadtime = tempValue <= MAXDEADTIME ? tempValue : MAXDEADTIME; break;
+                *deadtime = tempValue <= MAX_DEADTIME ? tempValue : MAX_DEADTIME; break;
             case 'F':
             case 'f':
-                *waveFreq = tempValue <= MAXWAVEFREQ ? tempValue : MAXWAVEFREQ; break;
+                *waveFreq = tempValue <= MAX_WAVE_FREQ ? tempValue : MAX_WAVE_FREQ; break;
             case 'S':
             case 's':
-                *sampleFreq = tempValue <= MAXSAMPLEFREQ ? tempValue : MAXSAMPLEFREQ; break;
+                *sampleFreq = tempValue <= MAX_SAMPLE_FREQ ? tempValue : MAX_SAMPLE_FREQ; break;
             case 'T':
             case 't':
-                *waveType = tempValue < sizeof(enum waveTypes) ? (enum waveTypes)tempValue : DEFAULTWAVE;
+                *waveType = tempValue < sizeof(enum waveTypes) ? (enum waveTypes)tempValue : DEFAULT_WAVE;
                 break;
             default:
                 return false;
@@ -104,7 +104,7 @@ void PWM_Handler() {
     PWM->PWM_ISR1;                          // Clear flag by reading register
     AdcResult = ADC->ADC_CDR[7];            // Read the previous result
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
-    PWMC_SetDutyCycle(PWM, channel, (uint16_t)map(AdcResult, 0, MAXADC, 0, MAXAMP));
+    PWMC_SetDutyCycle(PWM, channel, (uint16_t)map(AdcResult, 0, MAX_ADC, 0, MAX_AMP));
     return;
 }
 
@@ -138,10 +138,10 @@ void setupPWM(){
     PWM->PWM_CH_NUM[channel].PWM_CMR = PWM_CMR_DTE | PWM_CMR_CALG; // Enable Deadtime and center align
 
     // Deadtime value set
-    PWM->PWM_CH_NUM[channel].PWM_DT = DEFAULTDEADTIME << PWM_DT_DTL_Pos | DEFAULTDEADTIME;
+    PWM->PWM_CH_NUM[channel].PWM_DT = DEFAULT_DEADTIME << PWM_DT_DTL_Pos | DEFAULT_DEADTIME;
     // Period value set
-    PWMC_SetPeriod(PWM, channel, DEFAULTPERIOD);
-    PWMC_SetDutyCycle(PWM_INTERFACE, channel, DEFAULTDUTY);
+    PWMC_SetPeriod(PWM, channel, DEFAULT_PERIOD);
+    PWMC_SetDutyCycle(PWM_INTERFACE, channel, DEFAULT_DUTY);
     PWMC_EnableChannel(PWM_INTERFACE, channel);
 
     PWMC_EnableChannelIt(PWM, channel);
@@ -186,9 +186,9 @@ void setup() {
   Serial.begin(115200);
   setupADC();
   setupPWM();
-  amplitude = DEFAULTDUTY;
-  deadtime = DEFAULTDEADTIME;
-  sampleFreq = DEFAULTPERIOD;
+  amplitude = DEFAULT_DUTY;
+  deadtime = DEFAULT_DEADTIME;
+  sampleFreq = DEFAULT_PERIOD;
   waveFreq = 0;
   waveType = flat;
   while(!Serial);
