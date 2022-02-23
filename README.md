@@ -1,9 +1,23 @@
-# SDG3
-A place for all of our files related to our project
+# SDG3 - Powered Speaker System - Happy Tunes
 
+## What should I expect to find in this repo?
 
-Folder allAboutCircuits has all the contents from this webpage:
-https://www.allaboutcircuits.com/projects/how-to-build-a-class-d-power-amplifier/
+Here you can find all of the files related to Team 3's Senior Design Project
 
-website on PWM:
-https://www.electroniclinic.com/pulse-width-module-pwm-fully-explained-with-calculation-and-arduino-led-example/
+This includes: components, datasheets, simulations, source code and more!
+
+<style>
+table{
+    float: left;
+}
+</style>
+
+## Who is on the team?
+
+| Team Member         | Field               |
+| :------------------ | :------------------ |
+| Brian Ahlers        | Electrical Engineer |
+| Abraham Carranza    | Computer Engineer   |
+| Kaitlyn Hamiter     | Electrical Engineer |
+| Christopher Johnson | Computer Engineer   |
+| Christopher Kihano  | Computer Engineer   |
