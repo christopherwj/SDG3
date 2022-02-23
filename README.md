@@ -6,12 +6,6 @@ Here you can find all of the files related to Team 3's Senior Design Project
 
 This includes: components, datasheets, simulations, source code and more!
 
-<style>
-table{
-    float: left;
-}
-</style>
-
 ## Who is on the team?
 
 | Team Member         | Field               |
