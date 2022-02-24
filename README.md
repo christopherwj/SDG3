@@ -20,8 +20,6 @@ This includes: components, datasheets, simulations, source code and more!
 
 From here on you will find sections detailing different points of Team 3's progress, links to documents and Google Drive directories.
 
-<br/>
-
 ## Senior Design B
 
 ### Draw.io Diagrams
@@ -42,8 +40,6 @@ From here on you will find sections detailing different points of Team 3's progr
 
 - [Spreadsheet](https://docs.google.com/spreadsheets/d/12QhF0Mqp7NLQ3RBZjQvClqkk2QXMBvIy/edit?usp=sharing&ouid=104676273414826873055&rtpof=true&sd=true)
 - [Folder Directory](https://drive.google.com/drive/folders/19Oa_INHHnQHptVcXvDggzD6vj_AUFLqU?usp=sharing)
-
-<br/>
 
 ## Senior Design A
 
