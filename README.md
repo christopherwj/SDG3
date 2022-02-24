@@ -29,7 +29,7 @@ From here on you will find sections detailing different points of Team 3's progr
 ### Hardware Readiness
 
 - [Report](https://docs.google.com/document/d/16WcHxM67mR_bLpcuLu_cNokmKFwlc5yR9lt_XE9QbTI/edit?usp=sharing)
-- [Folder Directory](https://docs.google.com/document/d/16WcHxM67mR_bLpcuLu_cNokmKFwlc5yR9lt_XE9QbTI/edit?usp=sharing)
+- [Folder Directory](https://drive.google.com/drive/folders/1j9h-cdcIw9vPNtkVY1A0dE3LBrUp3cXq?usp=sharing)
 
 ### Firmware Readiness
 
