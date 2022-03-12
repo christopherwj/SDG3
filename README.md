@@ -44,8 +44,7 @@ From here on you will find sections detailing different points of Team 3's progr
 ## Senior Design A
 
 ### Draw.io Diagrams
-
-- [Folder Directory](https://drive.google.com/drive/folders/15kxVudf5h-fhxRucdEdU0__9-gUpvDf6?usp=sharing)
+- <a href="https://drive.google.com/drive/folders/15kxVudf5h-fhxRucdEdU0__9-gUpvDf6?usp=sharing" target="_blank">Folder Directory</a>
 
 ### System Description, Requirements, Validation
 
