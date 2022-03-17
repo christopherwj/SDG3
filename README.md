@@ -26,6 +26,10 @@ From here on you will find sections detailing different points of Team 3's progr
 
 - <a href="https://drive.google.com/drive/folders/15kxVudf5h-fhxRucdEdU0__9-gUpvDf6?usp=sharing" target="_blank">Folder Directory</a>
 
+### System Integration Testing
+- [Report](https://docs.google.com/document/d/11B_BZgX_fD9LDzKS0TlejT2W-SY3xGZJBUBTwWxWOKQ/edit?usp=sharing)
+- [Folder Directory](https://drive.google.com/drive/folders/19PX26QaqbOIaYj3eWc8ziYZd34B6GGTo?usp=sharing)
+
 ### Hardware Readiness
 
 - [Report](https://docs.google.com/document/d/16WcHxM67mR_bLpcuLu_cNokmKFwlc5yR9lt_XE9QbTI/edit?usp=sharing)
