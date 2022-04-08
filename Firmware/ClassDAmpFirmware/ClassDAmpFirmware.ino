@@ -18,9 +18,10 @@ Be aware the Due runs at 3.3V.
 #define MAX_ADC 4095
 
 
-uint32_t AdcResult = 0;
+uint32_t Adc0Result = 0;
+uint32_t Adc1Result = 0;
 uint32_t channel;
-bool dacEnable = false;
+bool dacEnable = true;
 
 uint32_t logApprox(uint32_t input, uint32_t order){
     uint32_t output = input;
@@ -66,6 +67,8 @@ int16_t filter(int32_t signal){
 void setupADC(){
     ADC->ADC_WPMR &= ~(ADC_WPMR_WPEN); // Disable Write Protect Mode
     ADC->ADC_CHER |= ADC_CHER_CH7; // Enable A0 pin
+    //ADC->ADC_CHER |= ADC_CHER_CH6;// g_APinDescription[1].ulADCChannelNumber; // Enable A1 pin
+    //ADC->ADC_CHER |= ADC_CHER_CH5;
     ADC->ADC_MR = 0; 
     ADC->ADC_MR = ADC_MR_PRESCAL(4);    //ADC Clock set to 8MHz 
     ADC->ADC_MR |= ADC_MR_TRACKTIM(3); 
@@ -130,6 +133,10 @@ void setupPWM(){
     return;
 }
 
+void setupTimer(){
+    return;   
+}    
+
 // Sets the deadtime in the update register
 //
 // Inputs: dtTime, The number of cycles there exists deadtime.
@@ -155,22 +162,34 @@ void setDuty(uint16_t duty){
 // This reads the value in the ADC, starts a new ADC reading, and sets the PWM duty to the maped value from the ADC.
 void PWM_Handler() {
     PWM->PWM_ISR1;                          // Clear flag by reading register
-    AdcResult = ADC->ADC_CDR[7];            // Read the previous result
+    Adc0Result = ADC->ADC_CDR[7];            // Read the previous result
+    Adc1Result = ADC->ADC_CDR[6];
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
-    int16_t filteredReading = AdcResult;
-    int16_t filteredReading = filter(AdcResult-2048.0);
+    //int16_t filteredReading = Adc0Result;
+    static uint32_t timeStep = 0;
+    if(timeStep++ == 44117) timeStep == 0;
+#define FREQUENCY 5
+    //int16_t filteredReading = 2048*sin(2*3.14*FREQUENCY*timeStep/44117)+2048;
+    //int16_t filteredReading = filter(AdcResult-2048.0);
     //uint16_t filteredReading = logApprox(AdcResult,5);
+    uint16_t filteredReading = 0;
     if(filteredReading > 4095) filteredReading = 4095;
     if(filteredReading < 0) filteredReading = 0;
     uint16_t mappedResult = map(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
     PWMC_SetDutyCycle(PWM, channel, mappedResult);
-    if(dacEnable == true) DACC->DACC_CDR = (uint32_t) filteredReading;
+    if(dacEnable == true){
+        //DACC->DACC_CDR = (uint32_t) filteredReading;
+        //DACC->DACC_CDR = (uint32_t) Adc1Result;
+        //DACC->DACC_CDR = 1000;//analogRead(A5);
+    }
+    
     return;
 }
 
 void setup() {
   setupADC();
   setupPWM();
+  setupTimer();
   if(dacEnable == true) setupDAC();
 }
 
