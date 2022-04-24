@@ -157,6 +157,22 @@ void setDuty(uint16_t duty){
     return;
 }
 
+int16_t mapRange(uint16_t input, uint16_t inLow, uint16_t inHigh, uint16_t outLow, uint16_t outHigh){
+    return outLow+(input-inLow)*(double)(outHigh-outLow)/(double)(inHigh-inLow);
+}
+
+int16_t rollingAverage(int16_t input){
+#define NUM_OF_SAMPLES 8
+    static int values[NUM_OF_SAMPLES] = {0};
+    static int index = 0;
+    if(index == NUM_OF_SAMPLES) index = 0;
+    static int32_t sum = 0;
+    sum -= values[index];
+    sum += input;
+    values[index++] = input;
+    return sum/NUM_OF_SAMPLES;
+}
+
 // PWM Interrupt Handler
 // Every time the PWM completes a cycle it triggers an interrupt.
 // This reads the value in the ADC, starts a new ADC reading, and sets the PWM duty to the maped value from the ADC.
@@ -166,13 +182,18 @@ void PWM_Handler() {
     Adc0Result = ADC->ADC_CDR[7];            // Read the previous result
     Adc1Result = ADC->ADC_CDR[6];
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
-    int16_t filteredReading = Adc0Result;
+    //int16_t filteredReading = Adc0Result;
+    int16_t filteredReading = rollingAverage(Adc0Result);
     //int16_t filteredReading = filter(AdcResult-2048.0);
     //uint16_t filteredReading = logApprox(AdcResult,5);
     if(filteredReading > 4095) filteredReading = 4095;
     if(filteredReading < 0) filteredReading = 0;
-    uint16_t mappedResult = map(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
-    PWMC_SetDutyCycle(PWM, channel, mappedResult);
+    //uint16_t mappedResult = map(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
+    int16_t mappedResult = mapRange(filteredReading, 1302, 2730, 0, MAX_AMP);
+    if(mappedResult > 952) mappedResult = 952;
+    if(mappedResult < 0) mappedResult = 0;
+    PWMC_SetDutyCycle(PWM, channel, (uint16_t)mappedResult);
+    //PWMC_SetDutyCycle(PWM, channel, 100);
     if(dacEnable == true){
         DACC->DACC_CDR = (uint32_t) filteredReading;
     }
