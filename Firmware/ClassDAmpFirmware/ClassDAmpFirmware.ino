@@ -8,7 +8,7 @@ Be aware the Due runs at 3.3V.
 
 #include <Arduino.h>
 
-#define DEFAULT_DEADTIME 8 // I think this should be the 14 for our gate driver. Adjust to determine
+#define DEFAULT_DEADTIME 10 // I think this should be the 14 for our gate driver. Adjust to determine
 #define DEFAULT_PERIOD 952   // 84E6/952/2 = 44,117.64khz
 #define DEFAULT_DUTY DEFAULT_PERIOD/3     
 
@@ -160,32 +160,42 @@ void setDuty(uint16_t duty){
 // PWM Interrupt Handler
 // Every time the PWM completes a cycle it triggers an interrupt.
 // This reads the value in the ADC, starts a new ADC reading, and sets the PWM duty to the maped value from the ADC.
+
 void PWM_Handler() {
     PWM->PWM_ISR1;                          // Clear flag by reading register
     Adc0Result = ADC->ADC_CDR[7];            // Read the previous result
     Adc1Result = ADC->ADC_CDR[6];
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
-    //int16_t filteredReading = Adc0Result;
-    static uint32_t timeStep = 0;
-    if(timeStep++ == 44117) timeStep == 0;
-#define FREQUENCY 5
-    //int16_t filteredReading = 2048*sin(2*3.14*FREQUENCY*timeStep/44117)+2048;
+    int16_t filteredReading = Adc0Result;
     //int16_t filteredReading = filter(AdcResult-2048.0);
     //uint16_t filteredReading = logApprox(AdcResult,5);
-    uint16_t filteredReading = 0;
     if(filteredReading > 4095) filteredReading = 4095;
     if(filteredReading < 0) filteredReading = 0;
     uint16_t mappedResult = map(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
     PWMC_SetDutyCycle(PWM, channel, mappedResult);
     if(dacEnable == true){
-        //DACC->DACC_CDR = (uint32_t) filteredReading;
-        //DACC->DACC_CDR = (uint32_t) Adc1Result;
-        //DACC->DACC_CDR = 1000;//analogRead(A5);
+        DACC->DACC_CDR = (uint32_t) filteredReading;
     }
     
     return;
 }
 
+// Sine wave generator
+/*
+void PWM_Handler() {
+    PWM->PWM_ISR1;                          // Clear flag by reading register
+    static uint32_t timeStep = 0;
+    if(timeStep++ == 44116) timeStep = 0;
+#define FREQUENCY 4300
+    int16_t filteredReading = 1500*sin(2*FREQUENCY*(double)timeStep/44117.0)+2048;
+    if(filteredReading > 4095) filteredReading = 4095;
+    if(filteredReading < 0) filteredReading = 0;
+    uint16_t mappedResult = map(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
+    PWMC_SetDutyCycle(PWM, channel, mappedResult);
+    DACC->DACC_CDR = (uint32_t) filteredReading;
+    return;
+}
+*/
 void setup() {
   setupADC();
   setupPWM();
