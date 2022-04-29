@@ -16,12 +16,19 @@ Be aware the Due runs at 3.3V.
 #define MAX_DEADTIME 10 // Arbitrary, should be lower like probably in the 10's
 #define MAX_SAMPLE_FREQ 44100
 #define MAX_ADC 4095
+#define SAMPLES_QUIET 100
+#define FILTER_SAMPLES 4
+#define FILTER_INPUT_OUTPUT_ENABLE
+#define FILTER_INPUT_OUTPUT_SAMPLES 1000
 
-
-uint32_t Adc0Result = 0;
-uint32_t Adc1Result = 0;
 uint32_t channel;
 bool dacEnable = true;
+
+#ifdef FILTER_INPUT_OUTPUT_ENABLE
+uint16_t samples[2][1000];
+uint16_t sampleIndex = 0;
+bool sampleEn = false;
+#endif
 
 uint32_t logApprox(uint32_t input, uint32_t order){
     uint32_t output = input;
@@ -31,36 +38,53 @@ uint32_t logApprox(uint32_t input, uint32_t order){
     }    
     return output;
 }
-
+/*
 int16_t filter(int32_t signal){
     #define POLES 3
-    static double y[3] = {0};
+    //static double y[3] = {0};
     static uint16_t x[3] = {0};
     
     // Shift old inputs so that the index is their n-m where n is the current
     // sample and m is the m'th after the current one.
-    memmove(x+1, x, POLES*sizeof(x[0]));
-    x[0] = signal;
+    //memmove(x+1, x, POLES*sizeof(x[0]));
+    //x[0] = signal;
 
     // Shift old outputs, same as above.
-    memmove(y+1, y, (POLES-1)*sizeof(y[0]));
-    y[0] = 0;
+    //memmove(y+1, y, (POLES-1)*sizeof(y[0]));
+    //y[0] = 0;
 
     // LPF at 20khz.
     // Found using MatLab, [b,a] = butter(2,fc/(fs/2)) where fc = 20k, fs=44117
-    const double a[3] = {0, -1.9497, 0.9509};
-    const double b[3] = {0.00030912, 0.00061824, 0.00030912};
- 
+    //const double a[3] = {0, -1.9497, 0.9509};
+    //const double b[3] = {0.00030912, 0.00061824, 0.00030912};
+
     // Calculate the filtered output and save result for next sample
-    y[0] = b[0]*x[0]+b[1]*x[1]+b[2]*x[2]-a[1]*y[1]-a[2]*y[2];
+    //y[0] = b[0]*x[0]+b[1]*x[1]+b[2]*x[2]-a[1]*y[1]-a[2]*y[2];
+    
+    // Direct-Form II at 10kHz
+    /*
+    const double a[3] = {1, -0.171886271172, 0.176800554};
+    const double b[3] = {1, 2, 1};
+    x[0] = signal - a[1]*x[1] - a[2]*x[2];
+    y[0] = b[0] * x[0] + b[1] * x[1] + b[2]*x[2];
+    */
     /*
     for(uint8_t i = 0; i < POLES; i++){
         y[0] += b[i]*x[i]-a[i]*y[i];
     }
-    */
+    
 
     // Return most recent result.
-    return y[0];
+    return x[0];
+}
+*/
+
+uint16_t filter(uint16_t input){
+    static int32_t v[3] = {0};
+    v[0] = v[1];
+    v[1] = v[2];
+    v[2] = ((((input * 263432L) >>  2) + ((v[0] * -370778L) >> 3) + ((v[1] * 360472L) >> 3)	)+131072) >> 18; 
+    return (short)(((v[0] + v[2])+2 * v[1]));
 }
 
 // Sets up the ADC on the A0 pin.
@@ -162,34 +186,57 @@ int16_t mapRange(uint16_t input, uint16_t inLow, uint16_t inHigh, uint16_t outLo
 }
 
 int16_t rollingAverage(int16_t input){
-#define NUM_OF_SAMPLES 8
-    static int values[NUM_OF_SAMPLES] = {0};
-    static int index = 0;
-    if(index == NUM_OF_SAMPLES) index = 0;
+    static uint16_t values[FILTER_SAMPLES] = {0};
+    static uint32_t index = 0;
+    if(index == FILTER_SAMPLES) index = 0;
     static int32_t sum = 0;
     sum -= values[index];
     sum += input;
     values[index++] = input;
-    return sum/NUM_OF_SAMPLES;
+    return sum/FILTER_SAMPLES;
+}
+
+int16_t rollingAverageQuiet(int16_t input){
+    static uint16_t values[SAMPLES_QUIET] = {0};
+    static uint32_t index = 0;
+    if(index == SAMPLES_QUIET) index = 0;
+    static int32_t sum = 0;
+    sum -= values[index];
+    sum += input;
+    values[index++] = input;
+    return sum/SAMPLES_QUIET;
 }
 
 // PWM Interrupt Handler
 // Every time the PWM completes a cycle it triggers an interrupt.
 // This reads the value in the ADC, starts a new ADC reading, and sets the PWM duty to the maped value from the ADC.
-
 void PWM_Handler() {
     PWM->PWM_ISR1;                          // Clear flag by reading register
-    Adc0Result = ADC->ADC_CDR[7];            // Read the previous result
-    Adc1Result = ADC->ADC_CDR[6];
+    uint32_t Adc0Result = ADC->ADC_CDR[7];            // Read the previous result
+    uint32_t Adc1Result = ADC->ADC_CDR[6];
     ADC->ADC_CR |= ADC_CR_START;            // Begin the next ADC conversion. 
     //int16_t filteredReading = Adc0Result;
-    int16_t filteredReading = rollingAverage(Adc0Result);
+    //int16_t filteredReading = rollingAverage(Adc0Result);
+    int16_t filteredReading = filter(Adc0Result);
+    /*
+    if(Adc0Result >= filteredReading - 10 && Adc0Result <= filteredReading + 10){
+        filteredReading = 2047;
+    }
+    */
+/*
+#ifdef FILTER_INPUT_OUTPUT_ENABLE
+    if(sampleEn == true){
+        samples[0][sampleIndex] = Adc0Result;
+        samples[1][sampleIndex++] = filteredReading;
+    }
+#endif
+*/
     //int16_t filteredReading = filter(AdcResult-2048.0);
     //uint16_t filteredReading = logApprox(AdcResult,5);
     if(filteredReading > 4095) filteredReading = 4095;
     if(filteredReading < 0) filteredReading = 0;
-    //uint16_t mappedResult = map(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
-    int16_t mappedResult = mapRange(filteredReading, 1302, 2730, 0, MAX_AMP);
+    uint16_t mappedResult = mapRange(filteredReading, 0, MAX_ADC, 0, MAX_AMP);
+    //int16_t mappedResult = mapRange(filteredReading, 1302, 2730, 0, MAX_AMP);
     if(mappedResult > 952) mappedResult = 952;
     if(mappedResult < 0) mappedResult = 0;
     PWMC_SetDutyCycle(PWM, channel, (uint16_t)mappedResult);
@@ -222,6 +269,26 @@ void setup() {
   setupPWM();
   setupTimer();
   if(dacEnable == true) setupDAC();
+  Serial.begin(9600);
+  delay(5000);
+  Serial.println("boo");
+  sampleEn = true;
 }
 
-void loop() {}
+void loop() {
+#ifdef FILTER_INPUT_OUTPUT_ENABLE
+/*
+    if(sampleIndex == 1000){
+        sampleEn = false;
+        sampleIndex = 0;
+        for(int i = 0; i < 1000; i++){
+           Serial.print(i);
+           Serial.print(",");
+           Serial.print(samples[0][i]);
+           Serial.print(",");
+           Serial.println(samples[1][i]);
+        }
+    }
+*/
+#endif
+}
